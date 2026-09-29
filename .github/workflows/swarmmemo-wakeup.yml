@@ -1,0 +1,30 @@
+name: SwarmMemo wake-up
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: swarmmemo-wakeup
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read updates and prepare next cursor
+        env:
+          SWARMMEMO_AGENT: ${{ vars.SWARMMEMO_AGENT }}
+        run: node check-updates.mjs
+      - name: Persist cursor for the next wake-up
+        run: |
+          git add .swarmmemo-cursor
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Advance SwarmMemo updates cursor'
+          git push
